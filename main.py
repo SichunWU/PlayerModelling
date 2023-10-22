@@ -1,7 +1,7 @@
 import numpy as np
 import seaborn as sns
 from tensorflow import keras
-from keras import layers
+from keras import layers, regularizers
 from keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 import pandas as pd
@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import json
 import dataProcessing
 
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+import joblib
 
 def MLP_model(X,y):
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
@@ -74,44 +77,64 @@ def top_result(filename):
           '\nTop-1 validation mae:', top_val_mae)
 
 
-def scatter_plot(X, y):
-    # X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
-    # X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
-    # X_test = X_test.to_numpy()
-    # y_test = y_test.to_numpy()
+def scatter_plot(X, y, model_type):
+    if (model_type == 1):
+        X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+        X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+        model = keras.models.load_model("data/MLP_model.h5")
+        model.summary()
+    elif (model_type == 2):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        model = joblib.load('data/RandomForest_model.pkl')
 
-    X = X.to_numpy()
-    y = y.to_numpy()
-    model = keras.models.load_model("data/MLP_model.h5")
-    #model.summary()
-    y_predicted = [model.predict(input_data.reshape(1, -1)) for input_data in X]
-
+    X_test = X_test.to_numpy()
+    y_test = y_test.to_numpy()
+    y_predicted = [model.predict(input_data.reshape(1, -1)) for input_data in X_test]
     # scatter plot
     plt.figure(figsize=(6, 6))
-    plt.scatter(y, y_predicted, c='b', label='Predicted Difficulty', alpha=0.3)
-    plt.plot([1, 5], [1, 5], 'r--', label='Ideal Line')  # 添加理想的线性关系，x=y
+    plt.scatter(y_test, y_predicted, c='b', label='Predicted Difficulty', alpha=0.3)
+    plt.plot([1, 5], [1, 5], 'r--', label='Ideal Line')
     plt.title('Rating vs Predicted')
     plt.xlabel('Rating')
     plt.ylabel('Predicted')
     plt.legend()
     plt.grid(True)
-    plt.savefig('data/MLP_model_scatter_plot.png')
+    if (model_type == 1):
+        plt.savefig('data/MLP_model_scatter_plot.png')
+    elif (model_type == 2):
+        plt.savefig('data/RandomForest_model_scatter_plot.png')
     plt.show()
     plt.close()
 
-def heatmap_plot(X, y):
-    # X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
-    # X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+def heatmap_plot(X, y, model_type):
+    if (model_type == 1):
+        X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+        X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    elif (model_type == 2):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    df = pd.concat([X, y], axis=1)
+    df = pd.concat([X_test, y_test], axis=1)
     correlation_matrix = df.corr()
 
     plt.figure(figsize=(15, 10))
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
     plt.title('Correlation Heatmap')
-    plt.savefig('data/MLP_model_heatmap_plot.png')
+    if (model_type == 1):
+        plt.savefig('data/MLP_model_scatter_plot.png')
+    elif (model_type == 2):
+        plt.savefig('data/RandomForest_model_heatmap_plot.png')
     plt.show()
     plt.close()
+
+def random_forest(X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
+    model.fit(X_train.values, y_train.values)
+    joblib.dump(model, 'data/RandomForest_model.pkl')
+
+    y_pred = model.predict(X_test.values)
+    mse = mean_squared_error(y_test, y_pred)
+    print("MSE:", mse)
 
 
 if __name__ == '__main__':
@@ -119,10 +142,13 @@ if __name__ == '__main__':
     input_data = pd.read_csv(data_path)
     X, y = dataProcessing.create_dataset(input_data)
     # MLP_model(X, y)
+    # random_forest(X, y)
 
     history = 'data/MLP_model_train.json'
     # top_result(history)
     # plotting(history)
 
-    # scatter_plot(X, y)
-    heatmap_plot(X, y)
+    # scatter_plot(X, y, model_type=1)
+    # scatter_plot(X, y, model_type=2)
+    # heatmap_plot(X, y, model_type=1)
+    # heatmap_plot(X, y, model_type=2)
