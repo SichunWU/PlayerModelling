@@ -11,9 +11,11 @@ import dataProcessing
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
+from scipy.stats import norm
 import joblib
 
-def MLP_model(X,y):
+
+def mlp_model(X, y):
     X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
     model = keras.Sequential([
@@ -36,9 +38,9 @@ def MLP_model(X,y):
     with open('./data/MLP_model_test.json', 'w') as f:
         json.dump({"Loss": test_history[0], "MAE": test_history[1]}, f)
 
+
 # plotting for a single model
 def plotting(filename):
-
     with open(filename, 'r') as f:
         history = json.load(f)
 
@@ -62,6 +64,7 @@ def plotting(filename):
     plt.show()
     plt.close()
 
+
 # top loss and MAE
 def top_result(filename):
     with open(filename, 'r') as f:
@@ -77,54 +80,95 @@ def top_result(filename):
           '\nTop-1 validation mae:', top_val_mae)
 
 
-def scatter_plot(X, y, model_type):
-    if (model_type == 1):
+def predict(X, y, model_type):
+    if model_type == 1:
         X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
         model = keras.models.load_model("data/MLP_model.h5")
         model.summary()
-    elif (model_type == 2):
+    elif model_type == 2:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         model = joblib.load('data/RandomForest_model.pkl')
 
     X_test = X_test.to_numpy()
     y_test = y_test.to_numpy()
     y_predicted = [model.predict(input_data.reshape(1, -1)) for input_data in X_test]
+    # y_predicted = [np.round(value) for value in y_predicted]
+    return y_test,y_predicted
+
+
+# scatter plot
+def scatter_plot(X, y, model_type):
+    y_test, y_predicted = predict(X, y,model_type)
     # scatter plot
     plt.figure(figsize=(6, 6))
-    plt.scatter(y_test, y_predicted, c='b', label='Predicted Difficulty', alpha=0.3)
+    plt.scatter(y_test, y_predicted, c='b', label='Predicted rating', alpha=0.3)
     plt.plot([1, 5], [1, 5], 'r--', label='Ideal Line')
-    plt.title('Rating vs Predicted')
-    plt.xlabel('Rating')
-    plt.ylabel('Predicted')
+    plt.title('Actual rating vs Predicted rating')
+    plt.xlabel('Actual rating')
+    plt.ylabel('Predicted rating')
     plt.legend()
     plt.grid(True)
-    if (model_type == 1):
+    if model_type == 1:
         plt.savefig('data/MLP_model_scatter_plot.png')
-    elif (model_type == 2):
+    elif model_type == 2:
         plt.savefig('data/RandomForest_model_scatter_plot.png')
     plt.show()
     plt.close()
 
+
+# This one measures the linear correlation, it shouldn't be used
 def heatmap_plot(X, y, model_type):
-    if (model_type == 1):
+    if model_type == 1:
         X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
-    elif (model_type == 2):
+    elif model_type == 2:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     df = pd.concat([X_test, y_test], axis=1)
     correlation_matrix = df.corr()
-
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(15, 10), tight_layout=True)
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+
     plt.title('Correlation Heatmap')
-    if (model_type == 1):
+    if model_type == 1:
         plt.savefig('data/MLP_model_scatter_plot.png')
-    elif (model_type == 2):
+    elif model_type == 2:
         plt.savefig('data/RandomForest_model_heatmap_plot.png')
     plt.show()
     plt.close()
+
+
+# error distribution
+def error_distribution_plot(X, y, model_type):
+    y_test, y_predicted = predict(X, y, model_type)
+    if model_type == 1:
+        y_predicted = [value[0][0] for value in y_predicted]
+    elif model_type == 2:
+        y_predicted = [value[0] for value in y_predicted]
+    residuals = y_test - y_predicted
+
+    plt.figure(figsize=(8, 6))
+    sns.histplot(residuals, kde=True, color='blue', bins=10, label='Residuals')
+    plt.title('Error Distribution')
+    plt.xlabel('Residuals')
+    plt.ylabel('Frequency')
+
+    # estimate parameters of a normal distribution curve
+    mean_residual = np.mean(residuals)
+    std_residual = np.std(residuals)
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = norm.pdf(x, mean_residual, std_residual)
+    plt.plot(x, p, 'k', linewidth=2, label='Normal Distribution')
+    plt.legend()
+    if model_type == 1:
+        plt.savefig('data/MLP_model_error_dist_plot.png')
+    elif model_type == 2:
+        plt.savefig('data/RandomForest_model_error_dist_plot.png')
+    plt.show()
+    plt.close()
+
 
 def random_forest(X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -141,7 +185,7 @@ if __name__ == '__main__':
     data_path = 'data/output.csv'
     input_data = pd.read_csv(data_path)
     X, y = dataProcessing.create_dataset(input_data)
-    # MLP_model(X, y)
+    # mlp_model(X, y)
     # random_forest(X, y)
 
     history = 'data/MLP_model_train.json'
@@ -152,3 +196,5 @@ if __name__ == '__main__':
     # scatter_plot(X, y, model_type=2)
     # heatmap_plot(X, y, model_type=1)
     # heatmap_plot(X, y, model_type=2)
+    # error_distribution_plot(X, y, model_type=1)
+    # error_distribution_plot(X, y, model_type=2)
