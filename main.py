@@ -10,7 +10,7 @@ import json
 import dataProcessing
 
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
 from scipy.stats import norm
 import joblib
 
@@ -20,9 +20,9 @@ def mlp_model(X, y):
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
     model = keras.Sequential([
         layers.Input(shape=(5,)),
-        layers.Dense(units=64, activation='relu'),
         layers.Dense(units=32, activation='relu'),
         layers.Dense(units=16, activation='relu'),
+        layers.Dense(units=8, activation='relu'),
         layers.Dense(1, activation='linear')
     ])
     model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
@@ -177,8 +177,8 @@ def random_forest(X, y):
     joblib.dump(model, 'data/RandomForest_model.pkl')
 
     y_pred = model.predict(X_test.values)
-    mse = mean_squared_error(y_test, y_pred)
-    print("MSE:", mse)
+    mae = mean_absolute_error(y_test, y_pred)
+    print("MAE:", mae)
 
 
 if __name__ == '__main__':
@@ -197,4 +197,4 @@ if __name__ == '__main__':
     # heatmap_plot(X, y, model_type=1)
     # heatmap_plot(X, y, model_type=2)
     # error_distribution_plot(X, y, model_type=1)
-    # error_distribution_plot(X, y, model_type=2)
+    #error_distribution_plot(X, y, model_type=2)

@@ -2,7 +2,7 @@ import re
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-data_path = 'data/1021.csv'
+data_path = 'data/1023.csv'
 input_path = 'data/cleaned.csv'
 
 # Unify data format
