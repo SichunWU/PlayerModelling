@@ -46,29 +46,30 @@ def replace_patterns(raw_data):
 
 # Create data for training
 def create_data(raw_data):
-    # 1.Number of deaths in the current level (if dead, including current death)
+    # 1.Total number of deaths in a session
     raw_data.loc[raw_data['winnerID'] == 1, 'winnerID'] = 0
     raw_data.loc[raw_data['winnerID'] != 0, 'winnerID'] = 1
     raw_data = raw_data.rename(columns={'winnerID': 'deathNum'})
     # cumulative sum
-    raw_data['deathNum'] = raw_data.groupby(['sessionID', 'levelName'])['deathNum'].cumsum()
+    # raw_data['deathNum'] = raw_data.groupby(['sessionID', 'levelName'])['deathNum'].cumsum()
+    raw_data['deathNum'] = raw_data.groupby(['sessionID'])['deathNum'].cumsum()
 
-    # 2.Time of current run (either cleared or died)
-    raw_data['levelTime'] = raw_data.groupby(['sessionID', 'levelName'])['levelTime'].cumsum()
+    # 2.Time of current round (either cleared or died)
+    # raw_data['levelTime'] = raw_data.groupby(['sessionID'])['levelTime'].cumsum()
 
-    # 3.Total distance traveled in the level
-    raw_data['pcTravelDistance'] = raw_data.groupby(['sessionID', 'levelName'])['pcTravelDistance'].cumsum()
+    # 3.Distance traveled current round
+    # raw_data['pcTravelDistance'] = raw_data.groupby(['sessionID'])['pcTravelDistance']
 
-    # 4.Total active time in the current session
-    raw_data['pauseframes'] = raw_data.groupby(['sessionID', 'levelName'])['pauseframes'].cumsum()
-    raw_data['framesCount'] = raw_data.groupby(['sessionID', 'levelName'])['framesCount'].cumsum()
-    raw_data['activeTime'] = raw_data['levelTime'] * (1 - (raw_data['pauseframes']/ raw_data['framesCount']))
+    # 5.Input frequency (inputTimes/ Time spent in a round)
+    # raw_data['inputTimes'] = raw_data.groupby(['sessionID'])['inputTimes'].cumsum()
+    raw_data['activeRoundTime'] = raw_data['levelTime'] * \
+                             (1 - (raw_data['pauseframes'] / raw_data['framesCount']))
+    raw_data['inputFreq'] = raw_data['inputTimes'] / raw_data['activeRoundTime']
 
-    # 5.Input frequency in keys per minute of the current level
-    raw_data['inputTimes'] = raw_data.groupby(['sessionID', 'levelName'])['inputTimes'].cumsum()
-    raw_data['inputFreq'] = raw_data['inputTimes'] / raw_data['activeTime']
+    # 4.Active session time (session time - time spent in pause)
+    raw_data['activeTime'] = raw_data.groupby(['sessionID'])['activeRoundTime'].cumsum()
 
-    raw_data.to_csv('data/output.csv', index=False)
+    raw_data.to_csv('data/output1.csv', index=False)
 
 # Create dataset
 def create_dataset(raw_data):
@@ -83,8 +84,8 @@ def create_dataset(raw_data):
     return X, y
 
 if __name__ == '__main__':
-    raw_data = pd.read_csv(data_path)
-    clean_data(raw_data)
+    #raw_data = pd.read_csv(data_path)
+    #clean_data(raw_data)
     cleaned_data = pd.read_csv(input_path)
     create_data(cleaned_data)
 

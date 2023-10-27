@@ -20,15 +20,15 @@ def mlp_model(X, y):
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
     model = keras.Sequential([
         layers.Input(shape=(5,)),
+        layers.Dense(units=64, activation='relu'),
         layers.Dense(units=32, activation='relu'),
         layers.Dense(units=16, activation='relu'),
-        layers.Dense(units=8, activation='relu'),
         layers.Dense(1, activation='linear')
     ])
     model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, restore_best_weights=True)
-    train_history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=200, batch_size=32,
-                              callbacks=[early_stopping])
+    # early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, restore_best_weights=True)
+    train_history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=135, batch_size=32) #,
+                              # callbacks=[early_stopping])
 
     model.save('./data/MLP_model.h5')
     with open('./data/MLP_model_train.json', 'w') as f:
@@ -182,19 +182,19 @@ def random_forest(X, y):
 
 
 if __name__ == '__main__':
-    data_path = 'data/output.csv'
+    data_path = 'data/output1.csv'
     input_data = pd.read_csv(data_path)
     X, y = dataProcessing.create_dataset(input_data)
-    # mlp_model(X, y)
-    # random_forest(X, y)
+    mlp_model(X, y)
+    #random_forest(X, y)
 
     history = 'data/MLP_model_train.json'
-    # top_result(history)
-    # plotting(history)
+    top_result(history)
+    plotting(history)
 
-    # scatter_plot(X, y, model_type=1)
+    scatter_plot(X, y, model_type=1)
     # scatter_plot(X, y, model_type=2)
     # heatmap_plot(X, y, model_type=1)
     # heatmap_plot(X, y, model_type=2)
-    # error_distribution_plot(X, y, model_type=1)
-    #error_distribution_plot(X, y, model_type=2)
+    error_distribution_plot(X, y, model_type=1)
+    # error_distribution_plot(X, y, model_type=2)
